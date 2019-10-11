@@ -7,51 +7,83 @@ struct kernel_axis {
 	ap_uint<8> dest;
 	ap_uint<1> last;
 	ap_uint<8> keep;
-	ap_uint<40> valid;
+	ap_uint<8> id;
+	ap_uint<40> user;
 };
 
 void ptp_slave (
 			ap_uint <64> current_time,
-			hls::stream <kernel_axis> &packet_in,
-			ap_uint <1> req_out,
-			ap_uint <1> sync_in,
-			ap_uint <1> delay_resp_in
+			ap_uint <64> &new_time,
+			ap_uint <1> &set_time,
+			hls::stream <kernel_axis> packet_in,
+			hls::stream <kernel_axis> &packet_out,
+			ap_uint <4> &state_out,
+			ap_uint<64> &delay_req_time_out,
+			ap_uint<64> &network_time_out
 		) {
 
-	static ap_uint<64> new_time;
+#pragma HLS INTERFACE ap_ctrl_none port=return
+#pragma HLS INTERFACE ap_none port=set_time
+#pragma HLS INTERFACE ap_none port=new_time
+#pragma HLS INTERFACE ap_none port=state_out
+#pragma HLS INTERFACE ap_none port=delay_req_time_out
+#pragma HLS INTERFACE ap_none port=network_time_out
+#pragma HLS resource core=AXI4Stream variable=packet_in
+#pragma HLS DATA_PACK variable=packet_in
+#pragma HLS resource core=AXI4Stream variable=packet_out
+#pragma HLS DATA_PACK variable=packet_out
+
 	kernel_axis packet_local;
-	ap_uint<64> current_time;
-	ap_uint<64> new_time;
-	ap_uint<64> delay_req_start;
-	ap_uint<64> network_time;
+	static ap_uint<64> delay_req_time;
+	static ap_uint<64> network_time;
+	
+	network_time_out = network_time;
+	delay_req_time_out = delay_req_time;
 
-	req_out = 0;
-	network_time = 0;
+	static enum {SYNC, DELAY_REQ, DELAY_RES} state = SYNC;
 
-	static enum {IDLE, DELAY_REQ, DELAY_RESPONSE} state = IDLE;
+	static ap_uint<8> id_counter = 0;
+	packet_local.dest = 1; //arbitrary for now
+	packet_local.last = 1;
+	packet_local.keep = 0xFF;
+	packet_local.id = id_counter;
+	packet_local.user = 0;
 
-	switch(state) {
-	case IDLE:
-		if (sync_in == 1)
+	state_out = state;
+
+	switch (state) {
+	case SYNC:
+		if (!packet_in.empty()) { //wait for new sync time
+			packet_local = packet_in.read();
+			new_time = packet_local.data;
+			set_time = 1;
 			state = DELAY_REQ;
+		}
+		else
+			set_time = 0;
 		break;
 	case DELAY_REQ:
-		if (!packet_in.empty())
-			packet_local = packet_in.read();
-		new_time = packet_local.data;
-
-		//send delay_req
-		req_out = 1;
-		delay_req_start = current_time;
-		if (delay_resp_in == 1)
-			state = DELAY_RESPONSE;
+		set_time = 0;
+		//send delay request
+		if (!packet_out.full()) {
+			packet_local.data = 1; //representing the delay req
+			packet_out.write(packet_local);
+			delay_req_time = current_time;
+			state = DELAY_RES;
+		}
 		break;
-	case DELAY_RESPONSE:
-			req_out = 0;
-			network_time = (current_time - delay_req_start)/2;
-			new_time = current_time + network_time;
-			state = IDLE;
+	case DELAY_RES:
+		if (!packet_in.empty()) { //wait for delay response
+			packet_local = packet_in.read();
+			if (packet_local.data == 1) { //delay response is here!
+				network_time = (current_time - delay_req_time)/2;
+				new_time = current_time + network_time;
+				set_time = 1;
+				state = SYNC;
+			}
+		}
+		else
+			set_time = 0;
+		break;
 	}
-
-
 }
