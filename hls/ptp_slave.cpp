@@ -2,43 +2,53 @@
 #include "ap_int.h"
 #define sync_period 20
 
-struct kernel_axis {
+/*struct kernel_axis {
 	ap_uint<64> data;
 	ap_uint<8> dest;
 	ap_uint<1> last;
 	ap_uint<8> keep;
 	ap_uint<8> id;
 	ap_uint<40> user;
+};*/
+
+struct gulf_axis {
+	ap_uint<512> data;
+	ap_uint<64> keep;
+	ap_uint<16> dest;
+	ap_uint<1> last;
 };
 
 void ptp_slave (
 			ap_uint <64> current_time,
 			ap_uint <64> &new_time,
 			ap_uint <1> &set_time,
-			hls::stream <kernel_axis> packet_in,
-			hls::stream <kernel_axis> &packet_out,
-			ap_uint <4> &state_out,
-			ap_uint<64> &delay_req_time_out,
-			ap_uint<64> &network_time_out
+			hls::stream <gulf_axis> packet_in,
+			hls::stream <gulf_axis> &packet_out
+			//ap_uint <4> &state_out,
+			//ap_uint<64> &delay_req_time_out,
+			//ap_uint<64> &network_time_out
 		) {
 
 #pragma HLS INTERFACE ap_ctrl_none port=return
 #pragma HLS INTERFACE ap_none port=set_time
 #pragma HLS INTERFACE ap_none port=new_time
-#pragma HLS INTERFACE ap_none port=state_out
-#pragma HLS INTERFACE ap_none port=delay_req_time_out
-#pragma HLS INTERFACE ap_none port=network_time_out
+//#pragma HLS INTERFACE ap_none port=state_out
+//#pragma HLS INTERFACE ap_none port=delay_req_time_out
+//#pragma HLS INTERFACE ap_none port=network_time_out
 #pragma HLS resource core=AXI4Stream variable=packet_in
 #pragma HLS DATA_PACK variable=packet_in
 #pragma HLS resource core=AXI4Stream variable=packet_out
 #pragma HLS DATA_PACK variable=packet_out
 
-	kernel_axis packet_local;
+	gulf_axis packet_local;
 	static ap_uint<64> delay_req_time;
 	static ap_uint<64> network_time;
 	
-	network_time_out = network_time;
-	delay_req_time_out = delay_req_time;
+	packet_local.data.range(511,448)= current_time;
+	packet_local.data.range(447,0)= 0;
+
+	//network_time_out = network_time;
+	//delay_req_time_out = delay_req_time;
 
 	static enum {SYNC, DELAY_REQ, DELAY_RES} state = SYNC;
 
@@ -46,10 +56,10 @@ void ptp_slave (
 	packet_local.dest = 1; //arbitrary for now
 	packet_local.last = 1;
 	packet_local.keep = 0xFF;
-	packet_local.id = id_counter;
-	packet_local.user = 0;
+	//packet_local.id = id_counter;
+	//packet_local.user = 0;
 
-	state_out = state;
+	//state_out = state;
 
 	switch (state) {
 	case SYNC:
