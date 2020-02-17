@@ -1,0 +1,4 @@
+add_force {/perf_monitor_wrapper/init_clk_n} -radix hex {0 0ns} {1 2450ps} -repeat_every 4900ps
+add_force {/perf_monitor_wrapper/init_clk_p} -radix hex {1 0ns} {0 2450ps} -repeat_every 4900ps
+add_force {/perf_monitor_wrapper/perf_monitor_i/master_fpga/master_send_0/num_flits_V} -radix unsigned {10000 0ns}
+add_force {/perf_monitor_wrapper/perf_monitor_i/master_fpga/master_send_0/init_V} -radix hex {1 0ns}
