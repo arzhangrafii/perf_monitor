@@ -10,12 +10,15 @@ struct gulf_axis {
 
 void packet_counter (
 		hls::stream <gulf_axis> in_stream,
+		ap_uint <1> measure, //used to start and stop measurements
 		ap_uint <64> &bandwidth,
 		ap_uint <64> &packet_size,
 		ap_uint <64> &flit_bytes,
-		ap_uint <64> &number_of_flits
+		ap_uint <64> &number_of_flits,
+		ap_uint <64> &cycle_count
 		//add Beta variable
 					) {
+#pragma HLS INTERFACE ap_none port=cycle_count
 #pragma HLS INTERFACE ap_none port=number_of_flits
 #pragma HLS INTERFACE ap_none port=flit_bytes
 #pragma HLS INTERFACE ap_none port=packet_size
@@ -24,6 +27,7 @@ void packet_counter (
 #pragma HLS DATA_PACK variable=in_stream
 
 	gulf_axis flit_temp;
+	static ap_uint <64> counter = 0;
 	static ap_uint <64> num_of_flits = 0;
 	static ap_uint <64> bytes_in_flit = 0;
 	static ap_uint <64> number_of_bytes = 0;
@@ -35,9 +39,13 @@ void packet_counter (
 	number_of_flits = num_of_flits;
 	packet_size = packet_size_reg;
 	flit_bytes = bytes_in_flit;
-	//if in_stream is not empty and
+	cycle_count = counter;
+
+	if (measure == 1) {
+		//if in_stream is not empty and
 		//read can be done, then valid and
 		//ready are both high
+		counter++;
 		if (!in_stream.empty()) {
 			flit_temp = in_stream.read();
 			flit_keep = flit_temp.keep;
@@ -441,9 +449,6 @@ void packet_counter (
 			else {
 				number_of_bytes += bytes_in_flit;
 			}
-
-
 		}
-
-
-	}
+	} //end of measurement
+}
