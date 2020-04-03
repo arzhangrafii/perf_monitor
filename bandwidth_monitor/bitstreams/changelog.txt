@@ -1,0 +1,22 @@
+mar 31
+
+system fully working for sink's packets
+
+vivado bloack diagram:
+	-system ila added for sink
+
+*************************************************
+apr 1
+
+vivado block diagram:
+	-added system ila for source
+
+*************************************************
+apr 2
+
+source.cpp:
+	-added init signal
+
+vivado block diagram:
+	-tied source's init signal to measure signal of the source's packet_counter
+	-this is to ensure that we start counting packets before the pl_to_ps fifo is full

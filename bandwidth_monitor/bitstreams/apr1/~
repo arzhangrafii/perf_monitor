@@ -1,0 +1,73 @@
+-------------------------------
+--- SET MEASURE SIGNAL TO 1 ---
+-------------------------------
+dpoke 0xA0006000 1
+
+--------------------------------
+--- WRITE DATA INTO THE SINK ---
+--------------------------------
+poke 0xA0005010 0x8BADF00D		//write 4 bytes into TDFD
+dpoke 0xA0005014 4				//write the transmission length into TLR
+
+-------------------------------
+--- SET MEASURE SIGNAL TO 0 ---
+-------------------------------
+dpoke 0xA0006000 0
+
+-------------------------------
+--- READ SINK'S NUMBER OF FLITS
+-------------------------------
+poke 0xA000201C					//read data occupancy (RDFO)
+poke 0xA0002024					//read data length (RLR)
+poke 0xA0002020					//read data from RDFD
+
+--------------------------------
+--- READ SINK'S CYCLE COUNTS ---
+--------------------------------
+poke 0xA000001C					//read data occupancy (RDFO)
+poke 0xA0000024					//read data length (RLR)
+poke 0xA0000020					//read data from RDFD
+
+
+
+
+**************
+*** SOURCE ***
+**************
+-------------------------------
+--- SET MEASURE SIGNAL TO 1 ---
+-------------------------------
+dpoke 0xA0006008 1
+
+-------------------------------
+--- SET MEASURE SIGNAL TO 0 ---
+-------------------------------
+dpoke 0xA0006008 0
+
+-------------------------------
+--- READ SINK'S NUMBER OF FLITS
+-------------------------------
+poke 0xA000301C					//read data occupancy (RDFO)
+poke 0xA0003024					//read data length (RLR)
+poke 0xA0003020					//read data from RDFD
+
+--------------------------------
+--- READ SINK'S CYCLE COUNTS ---
+--------------------------------
+poke 0xA000101C					//read data occupancy (RDFO)
+poke 0xA0001024					//read data length (RLR)
+poke 0xA0001020					//read data from RDFD
+
+
+--------------------------
+--- READ PL_TO_PS FIFO ---
+--------------------------
+poke 0xA000401C					//read data occupancy (RDFO)
+poke 0xA0004024					//read data length (RLR)
+poke 0xA0004020					//read data from RDFD
+
+
+
+
+TO RESET ISR: Write 0xFFFFFFFF to offset 0x00
+TO RESET SSR: Write 0xA5 to offset 0x28
