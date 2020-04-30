@@ -1,6 +1,6 @@
 #include "hls_stream.h"
 #include "ap_int.h"
-#define sync_period 20
+#define sync_period 250
 
 /*struct kernel_axis {
 	ap_uint<64> data;
@@ -23,8 +23,8 @@ void ptp_slave (
 			ap_uint <64> &new_time,
 			ap_uint <1> &set_time,
 			hls::stream <gulf_axis> packet_in,
-			hls::stream <gulf_axis> &packet_out
-			//ap_uint <4> &state_out,
+			hls::stream <gulf_axis> &packet_out,
+			ap_uint <4> &state_out
 			//ap_uint<64> &delay_req_time_out,
 			//ap_uint<64> &network_time_out
 		) {
@@ -32,7 +32,7 @@ void ptp_slave (
 #pragma HLS INTERFACE ap_ctrl_none port=return
 #pragma HLS INTERFACE ap_none port=set_time
 #pragma HLS INTERFACE ap_none port=new_time
-//#pragma HLS INTERFACE ap_none port=state_out
+#pragma HLS INTERFACE ap_none port=state_out
 //#pragma HLS INTERFACE ap_none port=delay_req_time_out
 //#pragma HLS INTERFACE ap_none port=network_time_out
 #pragma HLS resource core=AXI4Stream variable=packet_in
@@ -53,13 +53,13 @@ void ptp_slave (
 	static enum {SYNC, DELAY_REQ, DELAY_RES} state = SYNC;
 
 	static ap_uint<8> id_counter = 0;
-	packet_local.dest = 1; //arbitrary for now
+	packet_local.dest = 7; //go to ptp_master
 	packet_local.last = 1;
-	packet_local.keep = 0xFF;
+	packet_local.keep = 0xFFFFFFFFFFFFFFFF;
 	//packet_local.id = id_counter;
 	//packet_local.user = 0;
 
-	//state_out = state;
+	state_out = state;
 
 	switch (state) {
 	case SYNC:
@@ -77,6 +77,8 @@ void ptp_slave (
 		//send delay request
 		if (!packet_out.full()) {
 			packet_local.data = 1; //representing the delay req
+			packet_local.dest = 7;
+			packet_local.last = 1;
 			packet_out.write(packet_local);
 			delay_req_time = current_time;
 			state = DELAY_RES;

@@ -24,7 +24,8 @@ void slave_FPGA (
 		hls::stream <gulf_axis> &out_stream,
 		hls::stream <gulf_axis> &in_stream,
 		ap_uint <64> time,
-		ap_uint <64> &latency
+		ap_uint <64> &latency,
+		ap_uint <64> &time_sent //the time being read here, for debug purposes
 		) {
 
 #pragma HLS INTERFACE ap_ctrl_none port=return
@@ -33,25 +34,24 @@ void slave_FPGA (
 #pragma HLS resource core=AXI4Stream variable=in_stream
 #pragma HLS DATA_PACK variable=in_stream
 #pragma HLS INTERFACE ap_none port=latency
+#pragma HLS INTERFACE ap_none port=time_sent
 
-	static ap_uint<64> latency_save;
 
 	gulf_axis flit_temp;
-	ap_uint<64> packet_time_sent;
+	static ap_uint<64> latency_reg = 0;
+	static ap_uint<64> packet_time_sent = 0;
 
-	//ap_uint <64> latency_tmp;
-	//latency_tmp = abs(flit_temp.user - time);
-	//latency = latency_tmp;
-	//latency = flit_temp.user - time;
-
+	latency = latency_reg;
+	time_sent = packet_time_sent;
 	if (!in_stream.empty()) {
 		flit_temp = in_stream.read();
-		packet_time_sent = flit_temp.data.range(503,440);
-		latency_save = abs(packet_time_sent - time);
+		packet_time_sent = flit_temp.data.range(495,432);
+		latency_reg = abs(packet_time_sent - time);
+
+		if (!out_stream.full()) { //send packets back towards master only when new packets still arrive
+			flit_temp.last = 1;
+			flit_temp.dest = 3;
+			out_stream.write(flit_temp);
+		}
 	}
-	if (!out_stream.full())
-		out_stream.write(flit_temp);
-
-	latency = latency_save;
-
 }
